@@ -1,0 +1,5 @@
+You need to plan and carry out testing of your application. Remember to use your Refinement Log to
+identify problems solved in the development of your application.
+Produce a document for this section of the work that shows you have: 
+
+14
