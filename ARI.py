@@ -1,19 +1,15 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-from tkinter import Tk, Label, Entry, Listbox, Text, Button, StringVar, \
-    TOP, X, Y, END, BOTTOM, LEFT, RIGHT, ACTIVE, CENTER
+from tkinter import * # Tk, Label, Entry, Listbox, Text, Button, StringVar, TOP, X, Y, END, BOTTOM, LEFT, RIGHT, ACTIVE, CENTER
 from math import ceil
 import os
 import re
 
-
 class ARI:
-
     def __init__(self):
         self.root = Tk()
         self.s = StringVar()
         self.s.set('Search Mode')
         self.root.title('ARI')
+        self.root.protocol('WM_DELETE_WINDOW',lambda wdw=self.root: wdw.quit())
         self.finish = None
         self.root.resizable(width=False, height=False)
         self.root.geometry('400x500')
@@ -30,16 +26,16 @@ class ARI:
                            font=('Courier', 18), justify=CENTER)
         self.entry.bind('<FocusIn>', lambda x: \
                         self.entry.selection_range(0, END))
-        self.text = Text(self.root, height=17)
+        self.text = Text(self.root,height=17)
         self.dstr = StringVar()
         self.details = Label(self.root, textvariable=self.dstr,
                              justify=LEFT, font=('Courier', 12))
-        self.instructs.pack(side=TOP, fill=X)
-        self.entry.pack(fill=X)
-        self.searchb.pack(fill=X)
-        self.text.pack()
-        self.details.pack(fill=X, side=LEFT)
-        self.store.pack(side=RIGHT, fill=Y)
+        self.instructs.pack(side=TOP,fill=X,expand=True)
+        self.entry.pack(side=TOP,fill=X,expand=True)
+        self.searchb.pack(fill=X,expand=True)
+        self.text.pack(fill=BOTH,expand=True)
+        self.details.pack(fill=X,side=LEFT,expand=True)
+        self.store.pack(side=RIGHT,fill=Y,expand=True,pady=5,padx=5)
         self.process_text()
         self.root.mainloop()
 
@@ -66,6 +62,7 @@ class ARI:
         self.details.after(10, self.process_text)
 
     def search(self):
+        self.locks(self.tstr.get())
         if self.tstr.get() == "Title of your 'Text'":
             pass
         elif len(self.tstr.get()) > 2:
@@ -77,7 +74,7 @@ class ARI:
                         foreground='white')
         if self.tstr.get() == '':
             self.text.tag_delete('key')
-        self.entry.after(100, self.search)
+        self.sfinish=self.entry.after(100, self.search)
 
     def wide_search(self):
         self.listoffiles.delete(0, END)
@@ -85,45 +82,84 @@ class ARI:
         filenames = self.lsting()
         if len(self.tstr.get()) > 0:
             for x in filenames:
-                file = open(x, 'r').read()
-                if inp[:2] == file[-2:]:
-                    self.locks(inp)
-                    if inp[3:] != ' ':
-                        if inp[3:] in file[:-2]:
-                            self.listoffiles.insert(END, x)
-        self.finish = self.listoffiles.after(100, self.wide_search)
+                file = open(x,'r').read()
+                self.locks(inp)
+                out=self.keys(inp)
+                if out[0]==file[-2:]:
+                    for y in range(1,len(out)):
+                        if out[y] in file.lower():
+                            if x not in self.listoffiles.get(0):
+                                self.listoffiles.insert(END, x)
+        self.wfinish = self.listoffiles.after(100, self.wide_search)
+
+    def keys(self,input):
+        ilist=input.split(';')
+        return ilist
 
     def locks(self, inp):
-        if inp[-1] == ' ':
-            self.tstr.set(inp.rstrip(' ') + ';')
-            self.entry.icursor(END)
+        try:
+            if inp[-1] == ' ':
+                self.tstr.set(inp.rstrip(' ') + ';')
+                self.entry.icursor(END)
+        except IndexError:
+            return
         return
 
     def mode(self):
-        if self.s.get() == 'Search Mode':
-            self.tstr.set('Enter age then keys')
-            self.instructs['text'] = 'Search Mode'
-            self.s.set('Entry Mode')
-            self.store['text'] = 'Load'
-            self.store['command'] = self.load
-            self.text.pack_forget()
-            self.store.pack_forget()
-            self.details.pack_forget()
-            self.listoffiles.pack(fill=X, side=TOP)
-            self.listoffiles.bind('<FocusIn>', lambda x: \
-                                  self.root.after_cancel(self.finish))
-            self.store.pack(side=RIGHT, fill=Y)
-            self.wide_search()
+        if self.instructs['text'] == 'Text Search Mode':
+            self.search_mode()
             return
-        if self.s.get() == 'Entry Mode':
-            self.text.pack()
-            self.listoffiles.pack_forget()
-            self.s.set('Search Mode')
-            self.instructs['text'] = 'Entry Mode'
-            self.details.pack_forget()
-            self.details.pack(fill=X, side=LEFT)
-            self.tstr.set("Title of your 'Text'")
+        if self.instructs['text'] == 'Search Mode':
+            self.entry_mode()
             return
+        if self.instructs['text'] == 'Entry Mode':
+            self.file_search_mode()
+            return
+
+    def search_mode(self):
+        self.tstr.set('Enter age then keys')
+        self.instructs['text'] = 'Search Mode'
+        self.s.set('Entry Mode')
+        self.store['text'] = 'Load'
+        self.store['command'] = self.load
+        self.text.pack_forget()
+        self.store.pack_forget()
+        self.details.pack_forget()
+        self.listoffiles.pack(fill=X,side=TOP,expand=True)
+        self.listoffiles.bind('<FocusIn>', lambda x: \
+                              self.listoffiles.after_cancel(self.wfinish))
+        self.store.pack(fill=Y,side=RIGHT,expand=True,pady=5,padx=5)
+        self.wide_search()
+        try:
+            self.entry.after_cancel(self.sfinish)
+        except ValueError:
+            return
+        return
+
+    def entry_mode(self):
+        try:
+            self.entry.after_cancel(self.wfinish)
+        except AttributeError:
+            return
+        self.store.pack_forget()
+        self.listoffiles.pack_forget()
+        self.text.pack(fill=BOTH,expand=True)
+        self.store['text']='Save'
+        self.store.pack(fill=Y,side=RIGHT,expand=True,pady=5,padx=5)
+        self.s.set('Text Search Mode')
+        self.instructs['text'] = 'Entry Mode'
+        self.details.pack_forget()
+        self.details.pack(fill=X,side=LEFT,expand=True)
+        self.tstr.set("Title of your 'Text'")
+        return
+
+    def file_search_mode(self):
+        self.s.set('Search Mode')
+        self.search()
+        self.instructs['text'] = 'Text Search Mode'
+        self.tstr.set("Just Keyword")
+        self.details.pack_forget()
+        return
 
     def storage(self):
         stream = open(self.tstr.get() + '.txt', 'w+')
@@ -133,7 +169,12 @@ class ARI:
         return
 
     def load(self):
-        file = self.listoffiles.get(ACTIVE)
+        file=self.listoffiles.get(ACTIVE)
+        words=open(file,'r').read()
+        words=words[:-2]
+        self.text.delete("0.0",END)
+        self.text.insert("0.0",words)
+        self.entry_mode()
 
     def lsting(self):
         files = []
@@ -141,4 +182,5 @@ class ARI:
             if '.txt' in x:
                 files.append(x)
         return files
+
 ARI()
